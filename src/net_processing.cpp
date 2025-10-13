@@ -29,6 +29,7 @@
 #include <util.h>
 #include <utilmoneystr.h>
 #include <utilstrencodings.h>
+#include <array>
 
 #include <memory>
 
@@ -1015,8 +1016,9 @@ static void RelayAddress(const CAddress& addr, bool fReachable, CConnman* connma
     const CSipHasher hasher = connman->GetDeterministicRandomizer(RANDOMIZER_ID_ADDRESS_RELAY).Write(hashAddr << 32).Write((GetTime() + hashAddr) / (24*60*60));
     FastRandomContext insecure_rand;
 
-    std::array<std::pair<uint64_t, CNode*>,2> best{{{0, nullptr}, {0, nullptr}}};
-    assert(nRelayNodes <= best.size());
+    constexpr unsigned int MAX_RELAY_NODES = 2;
+    std::array<std::pair<uint64_t, CNode*>,MAX_RELAY_NODES> best{{{0, nullptr}, {0, nullptr}}};
+    assert(nRelayNodes <= MAX_RELAY_NODES);
 
     auto sortfunc = [&best, &hasher, nRelayNodes](CNode* pnode) {
         if (pnode->nVersion >= CADDR_TIME_VERSION) {
@@ -1031,9 +1033,10 @@ static void RelayAddress(const CAddress& addr, bool fReachable, CConnman* connma
         }
     };
 
-    auto pushfunc = [&addr, &best, nRelayNodes, &insecure_rand] {
+    auto pushfunc = [&addr, &best, nRelayNodes, &insecure_rand, &hasher] {
         for (unsigned int i = 0; i < nRelayNodes && best[i].first != 0; i++) {
-            best[i].second->PushAddress(addr, insecure_rand);
+            if (best[i].second != nullptr) {
+                best[i].second->PushAddress(addr, insecure_rand);
         }
     };
 
