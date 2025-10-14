@@ -1007,39 +1007,54 @@ static void RelayTransaction(const CTransaction& tx, CConnman* connman)
 
 static void RelayAddress(const CAddress& addr, bool fReachable, CConnman* connman)
 {
+    // number of peers to relay to
     unsigned int nRelayNodes = fReachable ? 2 : 1; // limited relaying of addresses outside our network(s)
 
-    // Relay to a limited number of other nodes
-    // Use deterministic randomness to send to the same nodes for 24 hours
-    // at a time so the addrKnowns of the chosen nodes prevent repeats
+    // deterministic randomness based on addr and current day
     uint64_t hashAddr = addr.GetHash();
-    const CSipHasher hasher = connman->GetDeterministicRandomizer(RANDOMIZER_ID_ADDRESS_RELAY).Write(hashAddr << 32).Write((GetTime() + hashAddr) / (24*60*60));
+    // copy the base hasher by value so lambdas can safely use it
+    CSipHasher base_hasher = connman->GetDeterministicRandomizer(RANDOMIZER_ID_ADDRESS_RELAY);
+    base_hasher.Write(hashAddr << 32).Write((GetTime() + hashAddr) / (24*60*60));
+
     FastRandomContext insecure_rand;
 
+    // constants
     constexpr unsigned int MAX_RELAY_NODES = 2;
-    std::array<std::pair<uint64_t, CNode*>,MAX_RELAY_NODES> best{{{0, nullptr}, {0, nullptr}}};
+    static_assert(MAX_RELAY_NODES >= 1 && MAX_RELAY_NODES <= 8, "MAX_RELAY_NODES sanity check");
+
+    // store best candidates (hash, node*)
+    std::array<std::pair<uint64_t, CNode*>, MAX_RELAY_NODES> best{{{0, nullptr}, {0, nullptr}}};
     assert(nRelayNodes <= MAX_RELAY_NODES);
 
-    auto sortfunc = [&best, &hasher, nRelayNodes](CNode* pnode) {
+    // sorter: try to insert pnode into best[] if it has a better hash
+    // capture best by reference, copy base_hasher by value, copy nRelayNodes
+    auto sortfunc = [&best, base_hasher, nRelayNodes](CNode* pnode) {
         if (pnode->nVersion >= CADDR_TIME_VERSION) {
-            uint64_t hashKey = CSipHasher(hasher).Write(pnode->GetId()).Finalize();
+            // make a local copy of the base_hasher so we can add the node id
+            uint64_t hashKey = CSipHasher(base_hasher).Write(pnode->GetId()).Finalize();
             for (unsigned int i = 0; i < nRelayNodes; i++) {
-                 if (hashKey > best[i].first) {
-                     std::copy(best.begin() + i, best.begin() + nRelayNodes - 1, best.begin() + i + 1);
-                     best[i] = std::make_pair(hashKey, pnode);
-                     break;
-                 }
+                if (hashKey > best[i].first) {
+                    // shift down older entries and insert
+                    std::copy(best.begin() + i, best.begin() + nRelayNodes - 1, best.begin() + i + 1);
+                    best[i] = std::make_pair(hashKey, pnode);
+                    break;
+                }
             }
         }
     };
 
-    auto pushfunc = [&addr, &best, nRelayNodes, &insecure_rand, &hasher] {
+    // push function: actually send the address to chosen peers
+    // capture addr by value, best by reference, insecure_rand by reference, nRelayNodes by value
+    auto pushfunc = [addr, &best, nRelayNodes, &insecure_rand]() {
         for (unsigned int i = 0; i < nRelayNodes && best[i].first != 0; i++) {
-            if (best[i].second != nullptr) {
-                best[i].second->PushAddress(addr, insecure_rand);
+            CNode* peer = best[i].second;
+            if (peer != nullptr) {
+                peer->PushAddress(addr, insecure_rand);
+            }
         }
     };
 
+    // run over nodes: first populate best[] then call pushfunc
     connman->ForEachNodeThen(std::move(sortfunc), std::move(pushfunc));
 }
 
