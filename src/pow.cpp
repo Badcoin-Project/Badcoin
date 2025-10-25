@@ -10,7 +10,7 @@
 #include <primitives/block.h>
 #include <uint256.h>
 #include <util.h>
-#include "bignum.h"
+
 
 unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params, int algo) {
     /* current difficulty formula, dash - DarkGravity v3, written by Evan Duffield - evan@dash.org */
