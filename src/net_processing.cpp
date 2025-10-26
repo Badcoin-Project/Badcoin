@@ -29,6 +29,7 @@
 #include <util.h>
 #include <utilmoneystr.h>
 #include <utilstrencodings.h>
+#include <algorithm>
 #include <array>
 
 #include <memory>
@@ -1023,7 +1024,7 @@ static void RelayAddress(const CAddress& addr, bool fReachable, CConnman* connma
     static_assert(MAX_RELAY_NODES >= 1 && MAX_RELAY_NODES <= 8, "MAX_RELAY_NODES sanity check");
 
     // store best candidates (hash, node*)
-    std::array<std::pair<uint64_t, CNode*>, MAX_RELAY_NODES> best{{{0, nullptr}, {0, nullptr}}};
+    std::array<std::pair<uint64_t, CNode*>, MAX_RELAY_NODES + 1> best{{{0, nullptr}, {0, nullptr}, {0, nullptr}}};
     assert(nRelayNodes <= MAX_RELAY_NODES);
 
     // sorter: try to insert pnode into best[] if it has a better hash
@@ -1035,7 +1036,7 @@ static void RelayAddress(const CAddress& addr, bool fReachable, CConnman* connma
             for (unsigned int i = 0; i < nRelayNodes; i++) {
                 if (hashKey > best[i].first) {
                     // shift down older entries and insert
-                    std::copy(best.begin() + i, best.begin() + nRelayNodes - 1, best.begin() + i + 1);
+                    std::move_backward(best.begin() + i, best.begin() + nRelayNodes, best.begin() + nRelayNodes + 1);
                     best[i] = std::make_pair(hashKey, pnode);
                     break;
                 }
