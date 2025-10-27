@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2017 The Bitcoin Core developers
+// Modified for Badcoin project maintenance (c) 2025 The Badcoin Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -42,6 +43,19 @@ public:
     Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn) {}
     Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn) : out(outIn), fCoinBase(fCoinBaseIn),nHeight(nHeightIn) {}
 
+    Coin(const Coin&) = default;
+
+    Coin(Coin&& other) noexcept : out(std::move(other.out)), fCoinBase(other.fCoinBase), nHeight(other.nHeight) {}
+
+    Coin& operator=(const Coin&) = default;
+
+    Coin& operator=(Coin&& other) noexcept {
+    out = std::move(other.out);
+    fCoinBase = other.fCoinBase;
+    nHeight = other.nHeight;
+    return *this;
+    }
+
     void Clear() {
         out.SetNull();
         fCoinBase = false;
@@ -49,7 +63,7 @@ public:
     }
 
     //! empty constructor
-    Coin() : fCoinBase(false), nHeight(0) { }
+    Coin() : out(), fCoinBase(false), nHeight(0) { }
 
     bool IsCoinBase() const {
         return fCoinBase;
