@@ -2412,6 +2412,7 @@ struct PerBlockConnectTrace {
  * This class is single-use, once you call GetBlocksConnected() you have to throw
  * it away and make a new one.
  */
+using namespace boost::placeholders;
 class ConnectTrace {
 private:
     std::vector<PerBlockConnectTrace> blocksConnected;
