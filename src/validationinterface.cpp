@@ -17,7 +17,9 @@
 #include <atomic>
 #include <future>
 
+#include <boost/bind/bind.hpp>
 #include <boost/signals2/signal.hpp>
+using namespace boost::placeholders;
 
 struct MainSignalsInstance {
     boost::signals2::signal<void (const CBlockIndex *, const CBlockIndex *, bool fInitialDownload)> UpdatedBlockTip;
