@@ -48,6 +48,9 @@
 #include <wallet/init.h>
 #endif
 #include <warnings.h>
+#include <boost/bind/bind.hpp>
+
+using namespace boost::placeholders;
 #include <stdint.h>
 #include <stdio.h>
 #include <memory>

@@ -48,6 +48,9 @@
 #include <QShortcut>
 #include <QStackedWidget>
 #include <QStatusBar>
+#include <boost/bind/bind.hpp>
+
+using namespace boost::placeholders;
 #include <QStyle>
 #include <QTimer>
 #include <QToolBar>
